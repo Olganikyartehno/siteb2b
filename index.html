@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ЮнитКонтроль.Запуск — прибыль по каждому артикулу WB и Ozon за 2 дня</title>
+<meta name="description" content="ЮнитКонтроль.Запуск подключается по API к личным кабинетам WB и Ozon и показывает чистую прибыль, маржу, ROI и остатки по каждому артикулу. Отчет через 48 часов.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --dark: #1a2332;
+    --accent: #10b981;
+    --accent-dark: #0d9668;
+    --bg-soft: #f8f9fa;
+    --text: #374151;
+    --text-muted: #6b7280;
+    --white: #ffffff;
+    --border: #e5e7eb;
+    --shadow: 0 1px 3px rgba(26,35,50,.06), 0 10px 30px rgba(26,35,50,.08);
+    --shadow-lg: 0 4px 12px rgba(26,35,50,.08), 0 20px 48px rgba(26,35,50,.12);
+    --radius: 14px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Inter', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    color: var(--text);
+    background: var(--white);
+    font-size: 17px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- Header ---------- */
+  header {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(255,255,255,.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav { display: flex; align-items: center; justify-content: space-between; height: 68px; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 19px; color: var(--dark); text-decoration: none; }
+  .logo-badge {
+    display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px;
+    background: var(--dark); color: var(--white);
+  }
+  .logo-badge svg { width: 18px; height: 18px; }
+  .logo span { font-weight: 500; color: var(--text-muted); font-size: 15px; }
+  .nav-links { display: flex; align-items: center; gap: 28px; }
+  .nav-links a { color: var(--text); text-decoration: none; font-size: 15px; font-weight: 500; transition: color .15s; }
+  .nav-links a:hover { color: var(--dark); }
+  .nav-cta {
+    display: inline-block; padding: 10px 20px; border-radius: 10px;
+    background: var(--accent); color: #fff; font-weight: 600; font-size: 15px;
+    text-decoration: none; transition: background .15s, transform .1s;
+  }
+  .nav-cta:hover { background: var(--accent-dark); }
+
+  /* ---------- Hero ---------- */
+  .hero { background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%); padding: 84px 0 72px; }
+  .hero-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 56px; align-items: center; }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(16,185,129,.1); color: var(--accent-dark);
+    font-size: 14px; font-weight: 600; padding: 7px 14px; border-radius: 100px; margin-bottom: 22px;
+  }
+  .hero-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+  .hero h1 {
+    font-size: clamp(34px, 4.6vw, 52px); line-height: 1.12; font-weight: 800; color: var(--dark);
+    letter-spacing: -0.02em; margin-bottom: 22px;
+  }
+  .hero h1 em { font-style: normal; color: var(--accent); }
+  .hero-sub { font-size: 19px; color: var(--text); max-width: 540px; margin-bottom: 34px; }
+  .hero-sub strong { color: var(--dark); font-weight: 600; }
+  .hero-actions { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    padding: 16px 30px; border-radius: 12px; font-size: 17px; font-weight: 700;
+    text-decoration: none; border: none; cursor: pointer; transition: all .15s;
+  }
+  .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 8px 24px rgba(16,185,129,.3); }
+  .btn-primary:hover { background: var(--accent-dark); transform: translateY(-1px); }
+  .btn-ghost {
+    background: var(--white); color: var(--dark); border: 1px solid var(--border);
+    font-weight: 600; box-shadow: 0 1px 2px rgba(26,35,50,.05);
+  }
+  .btn-ghost:hover { border-color: var(--dark); }
+  .hero-note { margin-top: 16px; font-size: 14px; color: var(--text-muted); }
+
+  /* ---------- Dashboard card ---------- */
+  .dashboard { background: var(--dark); border-radius: 20px; padding: 28px; color: #fff; box-shadow: var(--shadow-lg); position: relative; overflow: hidden; }
+  .dash-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+  .dash-head .title { font-weight: 700; font-size: 15px; opacity: .9; }
+  .dash-head .badge-live { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #34d399; background: rgba(52,211,153,.12); padding: 5px 10px; border-radius: 100px; }
+  .dash-head .badge-live .dot { width: 7px; height: 7px; border-radius: 50%; background: #34d399; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  .kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 22px; }
+  .kpi { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 14px 16px; }
+  .kpi .label { font-size: 12px; color: #9ca3af; margin-bottom: 4px; }
+  .kpi .value { font-size: 21px; font-weight: 700; letter-spacing: -0.01em; }
+  .kpi .value.green { color: #34d399; }
+  .kpi .delta { font-size: 12px; color: #9ca3af; }
+  .chart { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 16px 18px; margin-bottom: 22px; }
+  .chart .chart-title { font-size: 13px; color: #9ca3af; margin-bottom: 14px; display: flex; justify-content: space-between; }
+  .chart .chart-title b { color: #fff; font-weight: 600; }
+  .bars { display: flex; align-items: flex-end; gap: 10px; height: 120px; }
+  .bar { flex: 1; border-radius: 6px 6px 2px 2px; background: rgba(255,255,255,.14); position: relative; transition: background .2s, transform .7s cubic-bezier(.22,1,.36,1); transform-origin: bottom; transform: scaleY(0); }
+  .bar:nth-child(odd) { background: rgba(52,211,153,.55); }
+  .bar:hover { background: #34d399; }
+  .dashboard.animated .bar { transform: scaleY(1); }
+  .dashboard.animated .bar:nth-child(1) { transition-delay: .15s; }
+  .dashboard.animated .bar:nth-child(2) { transition-delay: .23s; }
+  .dashboard.animated .bar:nth-child(3) { transition-delay: .31s; }
+  .dashboard.animated .bar:nth-child(4) { transition-delay: .39s; }
+  .dashboard.animated .bar:nth-child(5) { transition-delay: .47s; }
+  .dashboard.animated .bar:nth-child(6) { transition-delay: .55s; }
+  .dashboard.animated .bar:nth-child(7) { transition-delay: .63s; }
+  .table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .table th { text-align: left; color: #9ca3af; font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; padding: 8px 8px; border-bottom: 1px solid rgba(255,255,255,.1); }
+  .table td { padding: 9px 8px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .table tr:last-child td { border-bottom: none; }
+  .tag { font-size: 11px; padding: 3px 8px; border-radius: 100px; font-weight: 600; }
+  .tag.win { background: rgba(52,211,153,.15); color: #34d399; }
+  .tag.loss { background: rgba(248,113,113,.15); color: #f87171; }
+
+  /* ---------- Sections ---------- */
+  section { padding: 88px 0; }
+  .section-label { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--accent); margin-bottom: 14px; }
+  .section-title { font-size: clamp(28px, 3.4vw, 38px); font-weight: 800; color: var(--dark); line-height: 1.18; letter-spacing: -0.015em; margin-bottom: 18px; }
+  .section-lead { font-size: 18px; color: var(--text); max-width: 720px; }
+
+  /* ---------- Pain points ---------- */
+  .pain-section { background: var(--bg-soft); }
+  .pain-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 48px; }
+  .pain-card { background: var(--white); border-radius: var(--radius); padding: 32px 28px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+  .icon {
+    display: grid; place-items: center; width: 46px; height: 46px; border-radius: 12px;
+    background: rgba(16,185,129,.1); color: var(--accent); margin-bottom: 20px;
+  }
+  .icon.dark { background: rgba(26,35,50,.06); color: var(--dark); }
+  .icon svg { width: 22px; height: 22px; }
+  .pain-card h3 { font-size: 18px; font-weight: 700; color: var(--dark); margin-bottom: 12px; line-height: 1.35; }
+  .pain-card p { font-size: 16px; color: var(--text-muted); }
+  .pain-card .num { font-size: 13px; font-weight: 700; color: var(--text-muted); margin-bottom: 10px; }
+
+  /* ---------- Features ---------- */
+  .features-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; margin-top: 48px; }
+  .feature-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 30px 28px; box-shadow: var(--shadow); transition: box-shadow .2s, transform .2s; }
+  .feature-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+  .feature-card .icon { margin-bottom: 18px; }
+  .feature-card h3 { font-size: 18px; font-weight: 700; color: var(--dark); margin-bottom: 10px; }
+  .feature-card h3 em { font-style: normal; color: var(--accent); }
+  .feature-card p { font-size: 16px; color: var(--text-muted); }
+  .feature-card .metric { display: inline-block; margin-top: 16px; background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: 14px; font-weight: 600; color: var(--dark); }
+
+  /* ---------- How it works ---------- */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 48px; counter-reset: step; }
+  .step { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 30px 28px; box-shadow: var(--shadow); position: relative; }
+  .step .step-num { font-size: 42px; font-weight: 800; color: transparent; -webkit-text-stroke: 1.5px var(--accent); line-height: 1; margin-bottom: 16px; }
+  .step h3 { font-size: 17px; font-weight: 700; color: var(--dark); margin-bottom: 8px; }
+  .step p { font-size: 15.5px; color: var(--text-muted); }
+  .step .time { display: inline-block; margin-top: 14px; font-size: 13px; font-weight: 600; color: var(--accent-dark); background: rgba(16,185,129,.1); padding: 5px 11px; border-radius: 100px; }
+
+  /* ---------- Pricing ---------- */
+  .pricing { background: var(--dark); position: relative; overflow: hidden; }
+  .pricing::before { content: ''; position: absolute; top: -200px; right: -200px; width: 500px; height: 500px; border-radius: 50%; background: radial-gradient(circle, rgba(16,185,129,.18), transparent 70%); }
+  .pricing::after { content: ''; position: absolute; bottom: -200px; left: -200px; width: 500px; height: 500px; border-radius: 50%; background: radial-gradient(circle, rgba(16,185,129,.1), transparent 70%); }
+  .pricing .container { position: relative; z-index: 1; }
+  .pricing .section-label { color: #34d399; }
+  .pricing .section-title { color: #fff; }
+  .pricing .section-lead { color: #cbd5e1; }
+  .pricing-card { display: grid; grid-template-columns: 1.2fr .8fr; gap: 0; background: var(--white); border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-lg); margin-top: 52px; }
+  .price-side { padding: 40px 44px; border-right: 1px solid var(--border); }
+  .price-value { display: flex; align-items: baseline; gap: 14px; margin-bottom: 8px; }
+  .price-now { font-size: 52px; font-weight: 800; color: var(--dark); letter-spacing: -0.02em; }
+  .price-old { font-size: 22px; color: var(--text-muted); text-decoration: line-through; font-weight: 600; }
+  .price-discount { display: inline-block; background: rgba(16,185,129,.12); color: var(--accent-dark); font-weight: 700; font-size: 14px; padding: 5px 12px; border-radius: 100px; margin-bottom: 22px; }
+  .price-includes { list-style: none; margin-bottom: 30px; }
+  .price-includes li { position: relative; padding-left: 30px; margin-bottom: 12px; font-size: 16px; color: var(--text); }
+  .price-includes li::before {
+    content: ''; position: absolute; left: 0; top: 4px; width: 18px; height: 18px;
+    background: rgba(16,185,129,.15); border-radius: 50%;
+  }
+  .price-includes li::after {
+    content: ''; position: absolute; left: 5px; top: 9px; width: 6px; height: 3px;
+    border-left: 2px solid var(--accent); border-bottom: 2px solid var(--accent); transform: rotate(-45deg);
+  }
+  .price-side .btn { width: 100%; }
+  .guarantee { margin-top: 16px; font-size: 13.5px; color: var(--text-muted); text-align: center; }
+  .offer-side { background: var(--bg-soft); padding: 40px 44px; }
+  .offer-side h4 { font-size: 17px; font-weight: 700; color: var(--dark); margin-bottom: 22px; }
+  .offer-list { list-style: none; }
+  .offer-list li { display: flex; gap: 14px; margin-bottom: 20px; font-size: 15.5px; color: var(--text); }
+  .offer-list .ico { flex-shrink: 0; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--white); border: 1px solid var(--border); color: var(--accent); }
+  .offer-list .ico svg { width: 15px; height: 15px; }
+  .offer-list b { color: var(--dark); font-weight: 600; }
+  .countdown-row { display: flex; align-items: center; gap: 14px; margin-top: 26px; padding-top: 24px; border-top: 1px solid var(--border); }
+  .countdown-row .label { font-size: 14px; color: var(--text); font-weight: 500; }
+  .countdown-row .label b { color: var(--dark); }
+  .countdown { display: flex; gap: 8px; }
+  .countdown .unit { background: var(--dark); color: #fff; font-weight: 700; font-size: 18px; border-radius: 10px; padding: 8px 12px; min-width: 52px; text-align: center; letter-spacing: .03em; }
+
+  /* ---------- FAQ ---------- */
+  .faq-section { background: var(--bg-soft); }
+  .faq-list { max-width: 780px; margin: 48px auto 0; }
+  details { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 14px; box-shadow: var(--shadow); overflow: hidden; }
+  summary { list-style: none; cursor: pointer; padding: 22px 26px; font-size: 17px; font-weight: 600; color: var(--dark); display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: '+'; font-size: 24px; font-weight: 400; color: var(--accent); transition: transform .2s; flex-shrink: 0; line-height: 1; }
+  details[open] summary::after { transform: rotate(45deg); }
+  details .answer { padding: 0 26px 22px; font-size: 16px; color: var(--text-muted); }
+
+  /* ---------- Final CTA ---------- */
+  .final-cta { text-align: center; padding: 90px 0; }
+  .final-cta .section-title { margin-bottom: 14px; }
+  .final-cta p { max-width: 560px; margin: 0 auto 34px; font-size: 18px; color: var(--text); }
+  .final-cta .btn { font-size: 18px; padding: 18px 40px; }
+
+  /* ---------- Footer ---------- */
+  footer { background: var(--dark); color: #9ca3af; padding: 48px 0 40px; font-size: 14px; }
+  .footer-grid { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px; }
+  .footer-logo { display: flex; align-items: center; gap: 10px; font-weight: 700; color: #fff; font-size: 17px; }
+  .footer-logo svg { width: 22px; height: 22px; }
+  .footer-links { display: flex; gap: 24px; }
+  .footer-links a { color: #9ca3af; text-decoration: none; transition: color .15s; }
+  .footer-links a:hover { color: #fff; }
+
+  /* ---------- Animations ---------- */
+  header.scrolled { box-shadow: 0 4px 24px rgba(26,35,50,.08); }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
+  .anim { animation: fadeUp .7s cubic-bezier(.22,1,.36,1) both; }
+  .anim-1 { animation-delay: .05s; }
+  .anim-2 { animation-delay: .18s; }
+  .anim-3 { animation-delay: .32s; }
+  .anim-4 { animation-delay: .46s; }
+  .anim-5 { animation-delay: .6s; }
+  .anim-6 { animation-delay: .74s; }
+
+  .reveal { opacity: 0; transform: translateY(28px); transition: opacity .65s ease, transform .65s cubic-bezier(.22,1,.36,1); }
+  .reveal.visible { opacity: 1; transform: none; }
+  .reveal.d1 { transition-delay: .08s; }
+  .reveal.d2 { transition-delay: .16s; }
+  .reveal.d3 { transition-delay: .24s; }
+  .reveal.d4 { transition-delay: .32s; }
+  .reveal.d5 { transition-delay: .4s; }
+  .reveal.d6 { transition-delay: .48s; }
+
+  .pain-card, .step { transition: transform .25s ease, box-shadow .25s ease; }
+  .pain-card:hover, .step:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+
+  .btn { transition: background .15s, transform .12s, box-shadow .15s; }
+  .btn:active { transform: scale(.97); }
+  .btn-primary { position: relative; overflow: hidden; }
+  .btn-primary::after {
+    content: ''; position: absolute; top: 0; left: -130%; width: 55%; height: 100%;
+    background: linear-gradient(120deg, transparent, rgba(255,255,255,.35), transparent);
+    transform: skewX(-20deg); animation: shine 3.4s ease-in-out infinite;
+  }
+  @keyframes shine { 0%, 62% { left: -130%; } 100% { left: 135%; } }
+
+  /* ---------- Modal form ---------- */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(26,35,50,.55); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+    opacity: 0; pointer-events: none; transition: opacity .25s ease;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: auto; }
+  .modal {
+    position: relative; background: var(--white); border-radius: 18px;
+    max-width: 460px; width: 100%; padding: 34px; box-shadow: var(--shadow-lg);
+    transform: translateY(18px) scale(.98); transition: transform .3s cubic-bezier(.22,1,.36,1);
+    max-height: 90vh; overflow-y: auto;
+  }
+  .modal-overlay.open .modal { transform: none; }
+  .modal-close {
+    position: absolute; top: 14px; right: 14px; width: 34px; height: 34px;
+    display: grid; place-items: center; border: none; background: var(--bg-soft);
+    border-radius: 10px; cursor: pointer; color: var(--text-muted); transition: color .15s, background .15s;
+  }
+  .modal-close:hover { color: var(--dark); background: var(--border); }
+  .modal-close svg { width: 16px; height: 16px; }
+  .modal h3 { font-size: 22px; font-weight: 800; color: var(--dark); margin-bottom: 6px; }
+  .modal .modal-sub { font-size: 15px; color: var(--text-muted); margin-bottom: 24px; }
+  .modal .modal-price { display: inline-block; font-weight: 700; color: var(--accent-dark); background: rgba(16,185,129,.1); padding: 4px 10px; border-radius: 100px; font-size: 14px; margin-bottom: 20px; }
+
+  .form-field { margin-bottom: 16px; }
+  .form-field label { display: block; font-size: 14px; font-weight: 600; color: var(--dark); margin-bottom: 6px; }
+  .form-field input, .form-field textarea {
+    width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px;
+    font: inherit; font-size: 16px; color: var(--text); background: var(--white);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .form-field input:focus, .form-field textarea:focus {
+    outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(16,185,129,.15);
+  }
+  .form-field textarea { resize: vertical; min-height: 72px; }
+  .checks { display: flex; gap: 22px; }
+  .check { display: flex; align-items: center; gap: 9px; font-size: 15px; font-weight: 500; color: var(--text); cursor: pointer; user-select: none; }
+  .check input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+  .form-note { font-size: 12.5px; color: var(--text-muted); margin-top: 14px; line-height: 1.5; }
+  .form-status { display: none; margin-top: 14px; padding: 12px 14px; border-radius: 10px; font-size: 14.5px; }
+  .form-status.error { display: block; background: rgba(248,113,113,.1); color: #b91c1c; border: 1px solid rgba(248,113,113,.3); }
+  .form-success { display: none; text-align: center; padding: 26px 6px; }
+  .form-success .ok-icon {
+    width: 64px; height: 64px; margin: 0 auto 18px; border-radius: 50%;
+    display: grid; place-items: center; background: rgba(16,185,129,.12); color: var(--accent);
+  }
+  .form-success h4 { font-size: 20px; font-weight: 800; color: var(--dark); margin-bottom: 8px; }
+  .form-success p { font-size: 15px; color: var(--text-muted); }
+  .modal-overlay .btn { width: 100%; }
+  .btn:disabled { opacity: .6; cursor: wait; }
+
+  @media (max-width: 920px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 44px; }
+    .pain-grid, .steps { grid-template-columns: 1fr; }
+    .features-grid { grid-template-columns: 1fr; }
+    .pricing-card { grid-template-columns: 1fr; }
+    .price-side, .offer-side { border-right: none; border-bottom: 1px solid var(--border); }
+    .nav-links { display: none; }
+    section { padding: 64px 0; }
+    .kpi-row { grid-template-columns: 1fr 1fr 1fr; }
+  }
+  @media (max-width: 520px) {
+    .kpi-row { grid-template-columns: 1fr 1fr; }
+    .kpi:last-child { grid-column: 1 / -1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .anim, .reveal { animation: none !important; transition: none !important; opacity: 1 !important; transform: none !important; }
+    .bar { transform: scaleY(1) !important; transition: none !important; }
+    .btn-primary::after { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= Header ================= -->
+<header>
+  <div class="container nav">
+    <a href="#" class="logo">
+      <span class="logo-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-6 4 3 4-8"/></svg>
+      </span>
+      ЮнитКонтроль<span>· Запуск</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#problems">Проблема</a>
+      <a href="#solution">Решение</a>
+      <a href="#how">Как работает</a>
+      <a href="#pricing">Тариф</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a href="#" class="nav-cta js-open-modal">Оплатить запуск</a>
+  </div>
+</header>
+
+<!-- ================= Hero ================= -->
+<section class="hero">
+  <div class="container hero-grid">
+    <div>
+      <div class="hero-badge anim anim-1"><span class="dot"></span> Отчет по прибыли артикулов через 48 часов</div>
+      <h1 class="anim anim-2">Какой из ваших артикулов <em>приносит деньги</em>, а какой съедает прибыль? Ответ — за 2 рабочих дня</h1>
+      <p class="hero-sub anim anim-3">Вы видите выплаты от маркетплейса, но не видите главную цифру — <strong>сколько реально заработали</strong>. Подключимся к WB и Ozon по API и покажем прибыль по каждому артикулу.</p>
+      <div class="hero-actions anim anim-4">
+        <a href="#" class="btn btn-primary js-open-modal">Оплатить запуск — 4 990 ₽</a>
+        <a href="#solution" class="btn btn-ghost">Как это работает</a>
+      </div>
+      <p class="hero-note anim anim-5">Запуск за 1 рабочий день · первый отчет через 48 часов после доступов · гарантия сходимости с выплатами</p>
+    </div>
+
+    <!-- Decorative dashboard -->
+    <div class="dashboard anim anim-3" aria-hidden="true">
+      <div class="dash-head">
+        <div class="title">Прибыль по артикулам</div>
+        <div class="badge-live"><span class="dot"></span> WB + Ozon</div>
+      </div>
+      <div class="kpi-row">
+        <div class="kpi">
+          <div class="label">Чистая прибыль</div>
+          <div class="value green" data-count="384250" data-suffix=" ₽">384 250 ₽</div>
+          <div class="delta">+12,4% за 30 дней</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Средняя маржа</div>
+          <div class="value" data-count="21.8" data-decimals="1" data-suffix="%">21,8%</div>
+          <div class="delta">ROI 1,84</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Остаток на складе</div>
+          <div class="value" data-count="186500" data-suffix=" ₽">186 500 ₽</div>
+          <div class="delta">на 21 день продаж</div>
+        </div>
+      </div>
+      <div class="chart">
+        <div class="chart-title"><span>Прибыль по артикулам, ₽</span><b>Топ-5</b></div>
+        <div class="bars">
+          <div class="bar" style="height:78%"></div>
+          <div class="bar" style="height:92%"></div>
+          <div class="bar" style="height:64%"></div>
+          <div class="bar" style="height:48%"></div>
+          <div class="bar" style="height:35%"></div>
+          <div class="bar" style="height:22%"></div>
+          <div class="bar" style="height:15%"></div>
+        </div>
+      </div>
+      <table class="table">
+        <tr><th>Артикул</th><th>Выручка</th><th>Прибыль</th><th>Маржа</th><th></th></tr>
+        <tr><td>AB-1042</td><td>612 400 ₽</td><td>168 400 ₽</td><td>27,5%</td><td><span class="tag win">▼ топ</span></td></tr>
+        <tr><td>AB-1017</td><td>284 100 ₽</td><td>54 200 ₽</td><td>19,1%</td><td><span class="tag win">стабильно</span></td></tr>
+        <tr><td>CD-2203</td><td>98 700 ₽</td><td>-12 300 ₽</td><td>-12,5%</td><td><span class="tag loss">минус</span></td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ================= Problems ================= -->
+<section id="problems" class="pain-section">
+  <div class="container">
+    <div class="section-label reveal">Знакомые симптомы</div>
+    <h2 class="section-title reveal">Почему вы не видите главную цифру — реальную прибыль</h2>
+    <p class="section-lead reveal">Деньги на счете есть, но по каждому товару картина размыта: один артикул тянет вверх, другой незаметно уходит в минус.</p>
+    <div class="pain-grid">
+      <div class="pain-card reveal d1">
+        <div class="icon dark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        </div>
+        <h3>«Деньги приходят, но я не понимаю, где прибыль»</h3>
+        <p>После комиссии, логистики, хранения, налога и возвратов картина по каждому товару размыта. Выплата выглядит нормально, а часть артикулов уже уходит в минус.</p>
+      </div>
+      <div class="pain-card reveal d2">
+        <div class="icon dark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6v4H9zM10 17v4M14 17v4M3 7h18M5 7v14h14V7"/></svg>
+        </div>
+        <h3>«Каждое воскресенье свожу 7 таблиц»</h3>
+        <p>WB, Ozon, банк, реклама, 1С, остатки и возвраты. К понедельнику цифры снова расходятся на 3–7%, а решение по поставке или цене нужно принимать уже сегодня.</p>
+      </div>
+      <div class="pain-card reveal d3">
+        <div class="icon dark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M4 20h16"/><path d="M6 20v-8h3v8zM12 20v-11h3v11zM18 20v-6h3v6z"/></svg>
+        </div>
+        <h3>«Остаток обнуляется внезапно»</h3>
+        <p>Карточка выпадает из выдачи за 3–5 дней после обнуления, либо вы заказываете лишние 200–300 штук и держите 150 000–300 000 ₽ на складе 2–3 месяца.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= Solution ================= -->
+<section id="solution">
+  <div class="container">
+    <div class="section-label reveal">Решение</div>
+    <h2 class="section-title reveal">«ЮнитКонтроль.Запуск» собирает данные из личных кабинетов WB и Ozon и показывает прибыль по каждому артикулу</h2>
+    <div class="features-grid">
+      <div class="feature-card reveal d1">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+        <h3>Подключение <em>за 1 рабочий день</em></h3>
+        <p>Подключимся по API и заберем данные о продажах, комиссиях, логистике, хранении, возвратах и рекламных списаниях из личных кабинетов WB и Ozon.</p>
+      </div>
+      <div class="feature-card reveal d2">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>
+        </div>
+        <h3>Отчет по каждому артикулу <em>через 48 часов</em></h3>
+        <p>Выручка, расходы, чистая прибыль, маржа, ROI и остаток на складе — по каждому артикулу в одном дашборде.</p>
+        <div class="metric">Выручка · Расходы · Чистая прибыль · Маржа · ROI · Остаток</div>
+      </div>
+      <div class="feature-card reveal d3">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        </div>
+        <h3>Находим артикулы с маржой ниже <em>10%</em></h3>
+        <p>Покажем уходящие в минус позиции и посчитаем, что изменит рост цены на 5%, отключение рекламы или смена склада.</p>
+      </div>
+      <div class="feature-card reveal d4">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+        </div>
+        <h3>Уведомление в Telegram за <em>21 день</em> до обнуления остатка</h3>
+        <p>Рекомендуемый объем поставки на основе продаж за 8 недель — чтобы карточка не выпадала из выдачи и не было лишних денег на складе.</p>
+      </div>
+      <div class="feature-card reveal d5">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+        </div>
+        <h3>Сверка с выплатами <em>WB и Ozon</em></h3>
+        <p>Расхождение итога с выплатами — не больше 1%. Если больше — дорабатываем модель без доплат с вашей стороны.</p>
+      </div>
+      <div class="feature-card reveal d6">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+        </div>
+        <h3>Обучение дашборду <em>за 60 минут</em></h3>
+        <p>Разберем, где смотреть прибыль, где — зависшие деньги и что выгрузить бухгалтеру.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= How it works ================= -->
+<section id="how" class="pain-section">
+  <div class="container">
+    <div class="section-label reveal">Как это работает</div>
+    <h2 class="section-title reveal">Три шага до цифр по каждому артикулу</h2>
+    <div class="steps">
+      <div class="step reveal d1">
+        <div class="step-num">01</div>
+        <h3>Оплата и анкета</h3>
+        <p>После оплаты пришлем анкету на 12 вопросов и список нужных доступов.</p>
+        <span class="time">Сегодня</span>
+      </div>
+      <div class="step reveal d2">
+        <div class="step-num">02</div>
+        <h3>Подключение по API</h3>
+        <p>Подключаемся к личным кабинетам WB и Ozon, проверяем справочники и себестоимость.</p>
+        <span class="time">1 рабочий день</span>
+      </div>
+      <div class="step reveal d3">
+        <div class="step-num">03</div>
+        <h3>Первый отчет</h3>
+        <p>Прибыль по каждому артикулу, проблемные позиции и рекомендации по цене, рекламе и складу.</p>
+        <span class="time">+48 часов</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= Pricing ================= -->
+<section id="pricing" class="pricing">
+  <div class="container">
+    <div class="section-label reveal">Ограниченное предложение</div>
+    <h2 class="section-title reveal">Оплатите запуск сегодня — зафиксируем цену 4 990 ₽</h2>
+    <p class="section-lead reveal">Единая цена для всех оплативших сегодня: 4 990 ₽ вместо 8 500 ₽ за запуск и первый месяц. С 00:00 МСК цена станет 8 500 ₽.</p>
+
+    <div class="pricing-card reveal">
+      <div class="price-side">
+        <div class="price-value">
+          <span class="price-now">4 990 ₽</span>
+          <span class="price-old">8 500 ₽</span>
+        </div>
+        <div class="price-discount">−41% за запуск и первый месяц</div>
+        <ul class="price-includes">
+          <li>Подключение WB и Ozon по API</li>
+          <li>Отчет по прибыли каждого артикула через 48 часов</li>
+          <li>Артикулы с маржой ниже 10% и уходящие в минус</li>
+          <li>Сценарии: +5% к цене, отключение рекламы, смена склада</li>
+          <li>Telegram-уведомления за 21 день до обнуления остатка</li>
+          <li>Рекомендуемый объем поставки на 8 недель</li>
+          <li>Сверка с выплатами WB и Ozon (расхождение ≤ 1%)</li>
+          <li>Обучение дашборду за 60 минут</li>
+        </ul>
+        <a href="#" class="btn btn-primary js-open-modal">Оплатить 4 990 ₽</a>
+        <p class="guarantee">Оплата за запуск и первый месяц. Если первый отчет придет позже чем через 48 часов после передачи доступов — первый месяц бесплатно.</p>
+      </div>
+      <div class="offer-side">
+        <h4>На этой неделе берем 7 магазинов</h4>
+        <ul class="offer-list">
+          <li>
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg></span>
+            <span><b>Ручная проверка</b> справочников и себестоимости, чтобы отчет сошелся с выплатами маркетплейсов</span>
+          </li>
+          <li>
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
+            <span><b>Запуск за 1 рабочий день</b>, первый отчет — через 48 часов после доступов</span>
+          </li>
+          <li>
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+            <span><b>Гарантия сроков:</b> если не уложимся — первый месяц бесплатно</span>
+          </li>
+        </ul>
+        <div class="countdown-row">
+          <div class="label">До конца предложения<br><b>сегодня до 23:59 МСК</b></div>
+          <div class="countdown" id="countdown">
+            <div class="unit" id="cd-h">--</div>
+            <div class="unit" id="cd-m">--</div>
+            <div class="unit" id="cd-s">--</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FAQ ================= -->
+<section id="faq" class="faq-section">
+  <div class="container">
+    <div class="section-label reveal">Вопросы</div>
+    <h2 class="section-title reveal">Частые вопросы</h2>
+    <div class="faq-list">
+      <details class="reveal d1">
+        <summary>Какие доступы нужны и насколько это безопасно?</summary>
+        <div class="answer">Доступы к личным кабинетам WB и Ozon — стандартные API-токены для статистики продаж и остатков. Передаются защищенным каналом и используются только для сбора данных. Вы можете отозвать доступы в любой момент.</div>
+      </details>
+      <details class="reveal d2">
+        <summary>Что если расхождение с выплатами больше 1%?</summary>
+        <div class="answer">Сверяем итог с выплатами WB и Ozon. Если расхождение больше 1% — дорабатываем модель без доплат с вашей стороны, до сходимости.</div>
+      </details>
+      <details class="reveal d3">
+        <summary>Сколько времени занимает подключение?</summary>
+        <div class="answer">Подключение по API — 1 рабочий день. Через 48 часов после передачи доступов вы получите первый отчет по каждому артикулу.</div>
+      </details>
+      <details class="reveal d4">
+        <summary>Что входит в стоимость 4 990 ₽?</summary>
+        <div class="answer">Запуск и первый месяц: подключение, первый отчет, сверка с выплатами, уведомления в Telegram и обучение дашборду за 60 минут.</div>
+      </details>
+      <details class="reveal d5">
+        <summary>Как я смогу пользоваться дашбордом без разбора?</summary>
+        <div class="answer">Проведем 60-минутное обучение: где смотреть прибыль, где — зависшие деньги и что выгрузить бухгалтеру.</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ================= Final CTA ================= -->
+<section class="final-cta">
+  <div class="container">
+    <h2 class="section-title">Узнайте, какой артикул съедает вашу прибыль — уже через 48 часов</h2>
+    <p>Сегодня цена 4 990 ₽ вместо 8 500 ₽. Запуск за 1 рабочий день, первый отчет через 48 часов после доступов. Осталось 7 мест на этой неделе.</p>
+    <a href="#" class="btn btn-primary js-open-modal">Оплатить 4 990 ₽</a>
+  </div>
+</section>
+
+<!-- ================= Modal form ================= -->
+<div class="modal-overlay" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal">
+    <button class="modal-close" id="modal-close" aria-label="Закрыть">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+
+    <form id="lead-form" novalidate>
+      <div class="modal-price">ЮнитКонтроль.Запуск · 4 990 ₽</div>
+      <h3 id="modal-title">Оплатить запуск</h3>
+      <p class="modal-sub">Оставьте заявку — пришлём анкету на 12 вопросов и список нужных доступов. Запуск за 1 рабочий день.</p>
+
+      <div class="form-field">
+        <label for="f-name">Имя</label>
+        <input type="text" id="f-name" name="name" placeholder="Как к вам обращаться" required>
+      </div>
+      <div class="form-field">
+        <label for="f-contact">Контакт (Telegram, email или телефон)</label>
+        <input type="text" id="f-contact" name="contact" placeholder="@username или +7..." required>
+      </div>
+      <div class="form-field">
+        <label>Магазины</label>
+        <div class="checks">
+          <label class="check"><input type="checkbox" name="stores" value="WB" checked> Wildberries</label>
+          <label class="check"><input type="checkbox" name="stores" value="Ozon" checked> Ozon</label>
+        </div>
+      </div>
+      <div class="form-field">
+        <label for="f-comment">Комментарий (необязательно)</label>
+        <textarea id="f-comment" name="comment" placeholder="Например: 42 артикула на WB, маржа не считаю"></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="submit-btn">Оплатить 4 990 ₽</button>
+      <div class="form-status" id="form-status"></div>
+      <p class="form-note">Нажимая кнопку, вы соглашаетесь с обработкой данных. Заявка фиксируется в Google Таблице и обрабатывается в течение 15 минут.</p>
+    </form>
+
+    <div class="form-success" id="form-success">
+      <div class="ok-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" width="30" height="30"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <h4>Заявка отправлена!</h4>
+      <p>Свяжемся с вами в ближайшие 15 минут, пришлём анкету и список доступов.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ================= Footer ================= -->
+<footer>
+  <div class="container footer-grid">
+    <div class="footer-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-6 4 3 4-8"/></svg>
+      ЮнитКонтроль.Запуск
+    </div>
+    <div class="footer-links">
+      <a href="#problems">Проблема</a>
+      <a href="#solution">Решение</a>
+      <a href="#pricing">Тариф</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <div>© 2026 ЮнитКонтроль.Запуск · Аналитика WB и Ozon</div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  function updateCountdown() {
+    var now = new Date();
+    var end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+    var diff = Math.max(0, end - now);
+    var h = String(Math.floor(diff / 3600000)).padStart(2, '0');
+    var m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+    var s = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+    document.getElementById('cd-h').textContent = h;
+    document.getElementById('cd-m').textContent = m;
+    document.getElementById('cd-s').textContent = s;
+  }
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+
+  var header = document.querySelector('header');
+  window.addEventListener('scroll', function () {
+    header.classList.toggle('scrolled', window.scrollY > 8);
+  }, { passive: true });
+
+  function fmt(val, decimals, suffix) {
+    var fixed = val.toFixed(decimals);
+    var parts = fixed.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    return (decimals ? parts[0] + ',' + parts[1] : parts[0]) + (suffix || '');
+  }
+
+  function countUp(el, end, decimals, suffix, duration) {
+    var start = null;
+    function step(ts) {
+      if (!start) start = ts;
+      var p = Math.min((ts - start) / duration, 1);
+      var eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = fmt(start + (end - start) * eased, decimals, suffix);
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  var dash = document.querySelector('.dashboard');
+  if (dash) {
+    dash.classList.add('animated');
+    setTimeout(function () {
+      document.querySelectorAll('.kpi .value[data-count]').forEach(function (el) {
+        countUp(el, parseFloat(el.dataset.count), parseInt(el.dataset.decimals || '0', 10), el.dataset.suffix || '', 1300);
+      });
+    }, 500);
+  }
+
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+    document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
+  } else {
+    document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('visible'); });
+  }
+
+  var GAS_URL = 'https://script.google.com/macros/s/AKfycbyUz1ccFJ_MBXcHcFenwvk-zjPlN0jJqpf_A2aqK9gDSSAgZw_5_o8-0kz4VXjFdrcB9g/exec';
+  var modal = document.getElementById('modal');
+  var form = document.getElementById('lead-form');
+  var successBlock = document.getElementById('form-success');
+  var statusBox = document.getElementById('form-status');
+  var submitBtn = document.getElementById('submit-btn');
+  var closeBtn = document.getElementById('modal-close');
+
+  function openModal(e) {
+    if (e) e.preventDefault();
+    form.style.display = 'block';
+    successBlock.style.display = 'none';
+    statusBox.className = 'form-status';
+    statusBox.textContent = '';
+    modal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal() {
+    modal.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  document.querySelectorAll('.js-open-modal').forEach(function (btn) {
+    btn.addEventListener('click', openModal);
+  });
+  closeBtn.addEventListener('click', closeModal);
+  modal.addEventListener('click', function (e) {
+    if (e.target === modal) closeModal();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
+  });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = document.getElementById('f-name').value.trim();
+    var contact = document.getElementById('f-contact').value.trim();
+    var comment = document.getElementById('f-comment').value.trim();
+    var stores = Array.prototype.map.call(form.querySelectorAll('input[name="stores"]:checked'), function (c) { return c.value; });
+
+    if (!name || !contact) {
+      statusBox.className = 'form-status error';
+      statusBox.textContent = 'Заполните имя и контакт';
+      return;
+    }
+    if (GAS_URL.indexOf('ВСТАВЬТЕ') === 0) {
+      statusBox.className = 'form-status error';
+      statusBox.textContent = 'Форма ещё не подключена к Google Таблице. Сообщите это владельцу сайта.';
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Отправляем…';
+
+    var payload = JSON.stringify({
+      product: 'ЮнитКонтроль.Запуск — 4 990 ₽',
+      name: name,
+      contact: contact,
+      stores: stores.join(', '),
+      comment: comment
+    });
+
+    fetch(GAS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: payload
+    }).then(function () {
+      form.style.display = 'none';
+      successBlock.style.display = 'block';
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Оплатить 4 990 ₽';
+    }).catch(function () {
+      statusBox.className = 'form-status error';
+      statusBox.textContent = 'Не удалось отправить. Попробуйте ещё раз или напишите нам в Telegram.';
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Оплатить 4 990 ₽';
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
