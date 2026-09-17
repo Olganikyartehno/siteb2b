@@ -57,5 +57,21 @@ URL веб-приложения задаётся переменной `GAS_URL` 
 
 ## Деплой
 
-- Netlify: перетащите папку проекта в app.netlify.com → Deploy manually.
-- GitHub Pages: опубликуйте репозиторий и включите Pages из ветки `main`.
+Проект опубликован и настроен на автодеплой при пуше в ветку `master`.
+
+| Платформа | URL | Автодеплой |
+|-----------|-----|------------|
+| Netlify | https://siteb2b.netlify.app | да, через GitHub Actions |
+| GitHub Pages | https://olganikyartehno.github.io/siteb2b/ | да, встроенный |
+
+### Как работает автодеплой
+
+1. Пуш в `master` запускает workflow `.github/workflows/netlify-deploy.yml`.
+2. Workflow вызывает Netlify Build Hook (секрет репозитория `NETLIFY_BUILD_HOOK`).
+3. Netlify собирает и публикует сайт (конфигурация — `netlify.toml`, publish-директория `.`, добавлены security-заголовки).
+4. Параллельно GitHub Pages пересобирает сайт из ветки `master`.
+
+### Ручной деплой
+
+- Netlify: `netlify deploy --prod --dir .` из папки проекта.
+- Обновить build hook: Netlify → Site configuration → Build & deploy → Build hooks → добавить новый URL в секрет GitHub (`gh secret set NETLIFY_BUILD_HOOK`).
